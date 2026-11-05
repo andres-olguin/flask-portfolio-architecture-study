@@ -1,29 +1,56 @@
-# Personal Blog - Architecture & Template Migration
+# Flask Portfolio Architecture Study — Jinja2 y Repository Pattern
 
-This repository contains the Flask application and routing logic for my personal blog. It is currently undergoing a structural migration to dynamic Jinja2 templates and a cleanly decoupled Repository Pattern architecture.
+**Estudio técnico de una aplicación de portafolio/blog escrita en Flask** que explora separación entre rutas, DTO, repositorios de datos y plantillas Jinja2. El código conserva antecedentes de un proyecto referenciado como `Daniel117622`; **la procedencia y licencia de los componentes originales deben verificarse** antes de redistribuirlos.
 
-## Application Architecture (Data Layer)
+> **Estado:** arquitectura en migración, no aplicación lista para producción ni evidencia de una integración MongoDB desplegada.
 
-The backend has been refactored to cleanly separate data structures from data retrieval, allowing for a seamless toggle between mock data (for local development) and a production database (MongoDB).
+## Arquitectura observada
 
-* **`dtos/` (Data Transfer Objects):** Pure Python `@dataclass` definitions representing the "shape" of the data (e.g., `ArticleSummary`, `SocialActivity`). These contain zero business logic, getters, or database queries.
-* **`repository/` (The Data Fetchers):** Contains the business logic for fetching data, utilizing Python `Protocol`s to enforce strict interfaces across domains (Homepage, Articles, Common, Devlogs).
-  * **Mock Repositories:** Hardcoded data implementations for fast local UI development without a database connection.
-  * **Real Repositories:** Production implementations designed to interface with a database connection pool.
-* **Global Registry (`AppRepositories`):** Instantiated once at startup as a Singleton. Flask routes rely entirely on this registry (e.g., `repos.articles.get_articles_summary()`), completely agnostic to whether the underlying data is mock or real.
+```mermaid
+flowchart LR
+    A[HTTP Flask] --> B[Blueprints]
+    B --> C[AppRepositories]
+    C --> D[Adaptadores mock / datos]
+    B --> E[Jinja2 Template Loader]
+    E --> F[templates_final]
+```
 
-## Template Architecture & Privacy
+| Ruta | Propósito |
+|---|---|
+| [`app.py`](app.py) | Factoría de aplicación y configuración de rutas |
+| [`routes/`](routes/) | Blueprints de HTTP |
+| [`repository/`](repository/) | Abstracciones y repositorios de datos |
+| [`dtos/`](dtos/) | Estructuras de transferencia |
+| [`loader.py`](loader.py) | Loader de plantillas para migración |
+| [`templates_final/`](templates_final/) | Plantillas Jinja2 incorporadas a Git |
+| [`requirements.txt`](requirements.txt) | Dependencias Python fijadas |
+| [`docs/`](docs/) | Evaluación y escalabilidad |
 
-To protect unmigrated content and ensure a clean public codebase, the project uses a split-directory architecture for its templates:
+## Instalación local
 
-* **`templates_final/`**: This directory contains the modernized, fully refactored Jinja templates (utilizing `base.html` inheritance and `includes/`). **This is the only template directory tracked and displayed publicly in Git.**
-* **`templates_original/`**: This directory contains the raw, original HTML data that is actively being transformed. To prevent revealing non-migrated or sensitive data, this folder is intentionally excluded via `.gitignore`.
+**Requisitos:** Python 3 y entorno virtual. Para probar sin publicar servicios:
 
-## How the Routing Works
+```bash
+python -m venv .venv
+python -m pip install -r requirements.txt
+python -m flask --app app run --host 127.0.0.1 --port 8000
+```
 
-The application (`app.py`) utilizes a custom Jinja loader (`ABTestingLoader` in `loader.py`) to manage traffic between the two template states without conflicting namespaces:
+Abrir `http://127.0.0.1:8000/`. Si se utiliza una ruta `/migration/`, la aplicación puede depender de `templates_original/`, directorio ignorado deliberadamente en Git y que **no está disponible en un clon limpio**.
 
-* **Normal Routes (`/`)**: Standard traffic is routed strictly to the modernized Jinja templates in `templates_final/`.
-* **Legacy/Migration Routes (`/migration/`)**: Any path starting with `/migration/` strictly bypasses the new files and serves the raw HTML from the local, git-ignored `templates_original/` folder for side-by-side comparison.
+**Advertencia:** ejecutar directamente `python app.py` activa `debug=True` y enlaza a `0.0.0.0` en la versión observada. Es un modo de desarrollo que no debe exponerse a Internet.
 
-This setup allows for live local testing of the old site while safely committing and pushing the new, modularized Python architecture and Jinja components.
+## Límites y seguridad
+
+- Los repositorios mock permiten revisar interfaces sin conexión real; no presuponen que MongoDB esté operando.
+- Evitar publicar contenido original no migrado, secretos, fotos de terceros o datos reales en ejemplos.
+- Confirmar autoría, licencia y permisos de los assets y archivos heredados antes de derivar un producto de MasterTech.
+- Probar rutas, errores, plantillas, CORS y persistencia en un entorno aislado antes de hablar de despliegue.
+
+## Evolución
+
+Añadir tests con Flask test client, normalizar dependencias, documentar configuración por entorno y revisar con claridad el cambio entre mocks y adapters reales. Si se valida un uso público, configurar servidor WSGI/ASGI, proxy TLS, logs y copias de seguridad.
+
+[Plan técnico](docs/ENGINEERING_ROADMAP_2026-11-04.md) · [Arquitectura y escalabilidad](docs/ARCHITECTURE_SCALABILITY_2026-11-04.md).
+
+**Créditos y derechos:** estudio de aprendizaje con posible material de terceros, sin transferencia automática de titularidad.
